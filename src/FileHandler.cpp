@@ -7,8 +7,25 @@
 #include <sstream>
 #include <fstream>
 
-const char *PipeName = "file_handler_pipe";
 
+
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <semaphore.h>
+#include <string>
+// #include "smem.h"
+#include <sys/shm.h>
+
+
+const char *PipeName = "file_handler_pipe";
+const char *BackingFile = "file_handler_shm";
+const char *SemaphoreName = "file_handler_sem";
 // Function to list files in a directory
 void listFiles(const std::string &directory)
 {
@@ -57,6 +74,31 @@ void readFileContent(const std::string &filePath)
     }
 }
 
+
+void listFilesToSharedMemory(const std::string &directory, caddr_t memptr, sem_t *semptr, size_t ByteSize) {
+    std::string command = "ls -p " + directory + " | grep -v /"; // List only files (not directories)
+    FILE *ls_output = popen(command.c_str(), "r");
+
+    if (ls_output) {
+        std::string files_list;
+        char buffer[128];
+        while (fgets(buffer, sizeof(buffer), ls_output)) {
+            files_list += buffer;
+        }
+
+        strncpy(memptr, files_list.c_str(), ByteSize); // Copy the list to the shared memory
+
+        pclose(ls_output);
+
+        /* Increment the semaphore so that the reader can read */
+        if (sem_post(semptr) < 0) {
+            perror("sem_post");
+        }
+    } else {
+        std::cerr << "Failed to execute 'ls' command." << std::endl;
+    }
+}
+
 int main()
 {
     mkfifo(PipeName, 0666);
@@ -77,11 +119,38 @@ int main()
         std::istringstream iss(request);
         std::string command, argument;
 
+        int fd = shm_open(BackingFile, O_RDWR | O_CREAT, 0644);
+        if (fd < 0) {
+            perror("Can't open shared mem segment...");
+            exit(-1);
+        }
+
+        ftruncate(fd, bytes_read);
+
+        caddr_t memptr = static_cast<caddr_t>(mmap(
+            NULL, bytes_read, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+
+        if (memptr == (caddr_t)-1) {
+            perror("Can't get segment...");
+            exit(-1);
+        }
+
+        fprintf(stderr, "shared mem address: %p [0..%ld]\n", memptr, bytes_read - 1);
+        fprintf(stderr, "backing file:       /dev/shm%s\n", BackingFile);
+
+        sem_t *semptr = sem_open(SemaphoreName, O_CREAT, 0644, 0);
+        if (semptr == (void *)-1) {
+            perror("sem_open");
+            exit(-1);
+        }
+
         if (iss >> command >> argument)
         {
             if (command == "list")
             {
-                listFiles(argument);
+                // listFiles(argument);
+                listFilesToSharedMemory(argument, memptr, semptr, bytes_read);
+
             }
             else if (command == "content")
             {
@@ -96,7 +165,14 @@ int main()
         {
             std::cerr << "Invalid request format: " << request << std::endl;
         }
+    munmap(memptr, bytes_read);
+    close(fd);
+    sem_close(semptr);
+    shm_unlink(BackingFile);
     }
+    sleep(12);
+
+    
 
     close(pipe_fd);
     return 0;
