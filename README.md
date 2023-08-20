@@ -1,0 +1,2 @@
+# Multi-file Handler Inter-process Communication
+MultiFileHandlerIPC is a C++ project that demonstrates interprocess communication (IPC) through named pipes and shared memory for handling files with different functions. The project consists of two applications: the File Handler (fh) and the Requester. These applications facilitate communication between each other to achieve efficient file handling and data exchange.
