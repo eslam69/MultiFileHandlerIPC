@@ -131,8 +131,8 @@ void listFilesToSharedMemory(const std::string &directory) {
         if (sem_post(semptr) < 0) {
             perror("sem_post");
         }
-         sleep(12); 
-        munmap(memptr, data_size);
+         sleep(1); 
+    munmap(memptr, data_size);
     close(shm_fd);
     sem_close(semptr);
     shm_unlink(BackingFile);
@@ -155,8 +155,9 @@ int main()
     char request_buffer[512]; // Adjust buffer size as needed
     ssize_t bytes_read;
     // ssize_t shared_memory_size = 1024;
-    if ((bytes_read = read(pipe_fd, request_buffer, sizeof(request_buffer))) > 0)
-    {    close(pipe_fd);
+    while (true)
+    {if ((bytes_read = read(pipe_fd, request_buffer, sizeof(request_buffer))) > 0)
+    {    
         std::string request(request_buffer, bytes_read);
         std::istringstream iss(request);
         std::string command, argument;
@@ -183,9 +184,14 @@ int main()
         {
             std::cerr << "Invalid request format: " << request << std::endl;
         }
-    // sleep(5);
-    }
+    sleep(5);
+    }}
     // sleep(12);
+    
+    
+    
+    
+    close(pipe_fd);
 
     
 

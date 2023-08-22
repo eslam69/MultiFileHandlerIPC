@@ -76,15 +76,15 @@ int main(int argc, char *argv[])
     }
 
     // Create or open the named pipe
-    auto pipeFlag = mkfifo(PipeName, 0666);
-     if (pipeFlag == -1)
-    {
-        if (errno != EEXIST)
-        {
-            std::cout << "Failed to open named pipe." << std::endl;
-            return 1;
-        }
-    }
+    // auto pipeFlag = mkfifo(PipeName, 0666);
+    //  if (pipeFlag == -1)
+    // {
+    //     if (errno != EEXIST)
+    //     {
+    //         std::cout << "Failed to open named pipe." << std::endl;
+    //         return 1;
+    //     }
+    // }
 
     int pipe_fd = open(PipeName, O_WRONLY);
    
