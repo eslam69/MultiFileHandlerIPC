@@ -20,13 +20,14 @@
 // #include "smem.h"
 #include <sys/shm.h>
 #include <algorithm>
-#define SHARED_MEM_CHUNK_SIZE 500
+#define SHARED_MEM_CHUNK_SIZE 512
 const char *SemaphoreName = "file_handler_sem";
 const char *BackingFile = "/file_handler_shm";
 
 const char *PipeName = "file_handler_pipe";
 // byte size 5000
 // ssize_t DATA_SIZE = 10000;
+int pipe_fd;
 void readSharedMemory()
 {
     int fd = shm_open(BackingFile, O_RDWR, 0644);
@@ -58,17 +59,17 @@ void readSharedMemory()
     }
     int value;
     sem_getvalue(semptr, &value);
-    printf("Semaphore value: %d\n", value);
+    // printf("Semaphore value: %d\n", value);
     if (sem_wait(semptr) < 0)
     {
         perror("sem_wait");
         exit(-1);
     }
     sem_getvalue(semptr, &value);
-    printf("Semaphore value after post: %d\n", value);
+    // printf("Semaphore value after post: %d\n", value);
     std::string sharedContent(memptr, SHARED_MEM_CHUNK_SIZE);
-    std::cout << "Content read from shared memory:" << std::endl;
-    std::cout << sharedContent << std::endl;
+    // std::cout << "Content read from shared memory:" << std::endl;
+    std::cout << sharedContent;
 
     sem_close(semptr);
     munmap(memptr, SHARED_MEM_CHUNK_SIZE);
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
     //     }
     // }
 
-    int pipe_fd = open(PipeName, O_WRONLY);
+    pipe_fd = open(PipeName, O_RDWR);
     // validate pipe_fd
     if (pipe_fd == -1)
     {
@@ -115,8 +116,33 @@ int main(int argc, char *argv[])
     write(pipe_fd, request.c_str(), request.size());
     write(pipe_fd, "\n", 1);
     std::cout << "Request Sent!" << std::endl;
-    sleep(2);
-    readSharedMemory();
+    sleep(1);
+    int response_buffer;
+    while (true)
+    {   //read pipe response
+        // sleep(2);
+        readSharedMemory();
+        // int bytes_read = read(pipe_fd, &response_buffer, sizeof(response_buffer));
+        // // printf("response_buffer: %d\n", response_buffer);
+        // if (bytes_read == 0)
+        // {
+        //     std::cout << "No response from file handler." << std::endl;
+        //     break;
+        // }
+        // else if (bytes_read == -1)
+        // {
+        //     std::cerr << "Failed to read from pipe." << std::endl;
+        //     break;
+        // }
+        // else
+        // {
+        //     // std::cout << "Response from file handler:" << std::endl;
+        //     // std::cout << response_buffer << std::endl;
+        //     readSharedMemory();
+        //     // break;
+        // }
+        
+    }
 
     close(pipe_fd);
 
