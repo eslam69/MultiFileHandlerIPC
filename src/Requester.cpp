@@ -137,7 +137,8 @@ int main(int argc, char *argv[])
     write(pipe_fd, request.c_str(), request.size());
     write(pipe_fd, "\n", 1);
     std::cout << "Request Sent!" << std::endl;
-    sleep(1);
+    // sleep(2);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     int response_buffer;
     int terminate_flag = 0;
     while (true)

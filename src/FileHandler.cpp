@@ -197,70 +197,14 @@ int main()
                 if (command == "list")
                 {
 
-                    // Create shared memory
-                    int shm_fd = shm_open(BackingFile, O_RDWR | O_CREAT, 0644);
-                    if (shm_fd < 0)
-                    {
-                        perror("Can't open shared mem segment...");
-                        exit(-1);
-                    }
-                    else
-                    {
-                        std::cout << "shared mem segment opened successfully" << std::endl;
-                    }
-
-                    ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE);
-
-                    caddr_t memptr = static_cast<caddr_t>(mmap(
-                        NULL, SHARED_MEM_CHUNK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
-
-                    if (memptr == (caddr_t)-1)
-                    {
-                        perror("Can't get segment...");
-                        exit(-1);
-                    }
-
-                    fprintf(stderr, "shared mem address: %p [0..%d]\n", memptr, SHARED_MEM_CHUNK_SIZE - 1);
-                    fprintf(stderr, "backing file:       /dev/shm%s\n", BackingFile);
-
-                    sem_t *semptr = sem_open(SemaphoreName, O_CREAT, 0644, 12);
-                    if (semptr == (void *)-1)
-                    {
-                        perror("sem_open");
-                        exit(-1);
-                    }
-                    int value;
-                    sem_init(semptr, 1, 0);
-                    sem_getvalue(semptr, &value);
-                    printf("Semaphore value: %d\n", value);
-                    // listFiles(argument);
                     auto data = listFilesToSharedMemory(argument);
-
-                    strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
-
-                    /* Increment the semaphore so that the reader can read */
-                    if (sem_post(semptr) < 0)
-                    {
-                        perror("sem_post");
-                    }
-                    sem_getvalue(semptr, &value);
-                    printf("Semaphore value new: %d\n", value);
-                    sleep(1);
-                    munmap(memptr, SHARED_MEM_CHUNK_SIZE);
-                    close(shm_fd);
-                    sem_close(semptr);
-                    shm_unlink(BackingFile);
-                }
-                else if (command == "content")
-                {
-                    auto data = readFileContent(argument);
 
                     int offset = 0;
                     while (offset < data.size())
                     {
 
                         // Chunking ************************
-                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size()+1 - offset));
+                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size() + 1 - offset));
                         auto chunk = data.substr(offset, chunk_size);
                         // std::cout << "current chunk" << chunk.c_str() << std::endl;
 
@@ -275,7 +219,7 @@ int main()
                         }
                         strncpy(memptr, chunk.c_str(), chunk_size);
                         // printf("mem: %c\n", chunk[chunk_size - 1]);
-                        offset += chunk_size ;
+                        offset += chunk_size;
                         // printf("offset = %d\n", offset);
                         // printf("chunk_size = %d\n", chunk_size);
 
@@ -293,14 +237,65 @@ int main()
                         }
                         std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     }
-                    std::cout<<"************End Of Request************"<<std::endl;
-                    sleep(2);
+                    std::cout << "************End Of Request************" << std::endl;
+                    sleep(1);
                     munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
                     close(shm_fd);
                     sem_close(semptr);
                     shm_unlink(BackingFile);
                     close(pipe_fd);
-                    std::cout<<"************Resources Released************"<<std::endl;
+                    std::cout << "************Resources Released************" << std::endl;
+                }
+                else if (command == "content")
+                {
+                    auto data = readFileContent(argument);
+
+                    int offset = 0;
+                    while (offset < data.size())
+                    {
+
+                        // Chunking ************************
+                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size() + 1 - offset));
+                        auto chunk = data.substr(offset, chunk_size);
+                        // std::cout << "current chunk" << chunk.c_str() << std::endl;
+
+                        if (chunk_size < SHARED_MEM_CHUNK_SIZE + 1)
+                        {
+                            chunk[chunk_size - 1] = 'X';
+                            std::cout << "**************chunk_size < SHARED_MEM_CHUNK_SIZE + 1***************" << std::endl;
+                        }
+                        else
+                        {
+                            chunk[chunk_size - 1] = '1';
+                        }
+                        strncpy(memptr, chunk.c_str(), chunk_size);
+                        // printf("mem: %c\n", chunk[chunk_size - 1]);
+                        offset += chunk_size;
+                        // printf("offset = %d\n", offset);
+                        // printf("chunk_size = %d\n", chunk_size);
+
+                        /* Increment the semaphore so that the reader can read */
+                        if (sem_post(semptr) < 0)
+                        {
+                            perror("sem_post");
+                        }
+                        sem_getvalue(semptr, &value);
+                        printf("Semaphore value new: %d\n", value);
+                        sleep(1);
+                        if (write(pipe_fd, &chunk_size, sizeof(chunk_size)) == -1)
+                        {
+                            perror("write");
+                        }
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    }
+                    std::cout << "************End Of Request************" << std::endl;
+                    sleep(1);
+                    munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
+                    close(shm_fd);
+                    sem_close(semptr);
+                    shm_unlink(BackingFile);
+                    close(pipe_fd);
+                    std::cout << "************Resources Released************" << std::endl;
                 }
                 else
                 {
