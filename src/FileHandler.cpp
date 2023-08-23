@@ -24,11 +24,12 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
-#define SHARED_MEM_CHUNK_SIZE 512
+#define SHARED_MEM_CHUNK_SIZE 4095
 
 const char *PipeName = "file_handler_pipe";
 const char *BackingFile = "/file_handler_shm";
 const char *SemaphoreName = "file_handler_sem";
+int chunk_size;
 // Function to list files in a directory
 void listFiles(const std::string &directory)
 {
@@ -166,10 +167,10 @@ int main()
                 std::cout << "shared mem segment opened successfully" << std::endl;
             }
 
-            ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE);
+            ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE + 1);
 
             caddr_t memptr = static_cast<caddr_t>(mmap(
-                NULL, SHARED_MEM_CHUNK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+                NULL, SHARED_MEM_CHUNK_SIZE + 1, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
 
             if (memptr == (caddr_t)-1)
             {
@@ -177,7 +178,7 @@ int main()
                 exit(-1);
             }
 
-            fprintf(stderr, "shared mem address: %p [0..%d]\n", memptr, SHARED_MEM_CHUNK_SIZE - 1);
+            fprintf(stderr, "shared mem address: %p [0..%d]\n", memptr, SHARED_MEM_CHUNK_SIZE);
             fprintf(stderr, "backing file:       /dev/shm%s\n", BackingFile);
 
             sem_t *semptr = sem_open(SemaphoreName, O_CREAT, 0644, 12);
@@ -259,10 +260,21 @@ int main()
                     {
 
                         // Chunking ************************
-                        int chunk_size = std::min(SHARED_MEM_CHUNK_SIZE, ((int)data.size() - offset));
-                        strncpy(memptr, data.substr(offset, chunk_size).c_str(), chunk_size);
-                        std::cout << "current chunk" << data.substr(offset, chunk_size).c_str() << std::endl;
-                        offset += chunk_size;
+                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size() - offset));
+                        auto chunk = data.substr(offset, chunk_size);
+                        if (chunk_size < SHARED_MEM_CHUNK_SIZE + 1)
+                        {
+                            chunk[chunk_size - 1] = 'X';
+                            std::cout << "**************chunk_size < SHARED_MEM_CHUNK_SIZE + 1***************" << std::endl;
+                        }
+                        else
+                        {
+                            chunk[chunk_size - 1] = '1';
+                        }
+                        strncpy(memptr, chunk.c_str(), chunk_size);
+                        printf("mem: %c\n", chunk[chunk_size - 1]);
+                        // std::cout << "current chunk" << chunk.c_str() << std::endl;
+                        offset += chunk_size + 1;
                         // printf("offset+chunk_size: %d\n", offset + chunk_size);
                         printf("offset = %d\n", offset);
                         printf("chunk_size = %d\n", chunk_size);
@@ -280,25 +292,17 @@ int main()
                         // sleep(1);
                         std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                        // munmap(memptr, SHARED_MEM_CHUNK_SIZE);
-                        // close(shm_fd);
-                        // sem_close(semptr);
-                        // shm_unlink(BackingFile);
-                        int PipeEndFlag = 1;
-                        printf("offset: %d\n", offset);
-                        // write(pipe_fd, &PipeEndFlag, sizeof(PipeEndFlag));
-                        // sleep(5);
                     }
+                    sleep(5);
+                    munmap(memptr,SHARED_MEM_CHUNK_SIZE + 1);
+                    close(shm_fd);
+                    sem_close(semptr);
+                    shm_unlink(BackingFile);
                 }
                 else
                 {
                     std::cerr << "Unknown command: " << command << std::endl;
                 }
-                sleep(1);
-                munmap(memptr, SHARED_MEM_CHUNK_SIZE);
-                close(shm_fd);
-                sem_close(semptr);
-                shm_unlink(BackingFile);
             }
             else
             {
