@@ -20,6 +20,8 @@
 // #include "smem.h"
 #include <sys/shm.h>
 #include <algorithm>
+#include <thread>
+#include <chrono>
 #define SHARED_MEM_CHUNK_SIZE 4095
 const char *SemaphoreName = "file_handler_sem";
 const char *BackingFile = "/file_handler_shm";
@@ -28,8 +30,9 @@ const char *PipeName = "file_handler_pipe";
 // byte size 5000
 // ssize_t DATA_SIZE = 10000;
 int pipe_fd;
-int readSharedMemory()
+int readSharedMemory(int bytes_to_read)
 {
+    // std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
     int fd = shm_open(BackingFile, O_RDWR, 0644);
     if (fd < 0)
     {
@@ -42,7 +45,7 @@ int readSharedMemory()
     // }
 
     caddr_t memptr = static_cast<caddr_t>(mmap(
-        NULL, SHARED_MEM_CHUNK_SIZE + 1, PROT_READ, MAP_SHARED, fd, 0));
+        NULL, bytes_to_read, PROT_READ, MAP_SHARED, fd, 0));
     // print sysconf(_SC_PAGE_SIZE)
     //  std::cout << "Page size: " << sysconf(_SC_PAGE_SIZE) << std::endl;
 
@@ -69,30 +72,29 @@ int readSharedMemory()
     }
     sem_getvalue(semptr, &value);
     // printf("Semaphore value after post: %d\n", value);
-    std::string sharedContent(memptr, SHARED_MEM_CHUNK_SIZE + 1);
+    std::string sharedContent(memptr, bytes_to_read);
     // std::string sharedContent(memptr);
 
     // std::cout << "Content read from shared memory:" << std::endl;
     auto flag = sharedContent.back();
 
     // std::cout << "*****flag>>>>>>>>>>>>" << flag << std::endl;
+    auto output = sharedContent.substr(0, bytes_to_read - 1);
+    // std::cout << "output size: " << output.size() << std::endl;
+    std::cout << output;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    sem_close(semptr);
+    munmap(memptr, bytes_to_read);
+    close(fd);
 
     if (flag == 'X')
     {
-        std::cout << "flag is X" << std::endl;
-        std::cout << "****************terminating****************\n";
-        sem_close(semptr);
-        munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
-        close(fd);
+        // std::cout << "";
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         return 1;
     }
-    auto output = sharedContent.substr(0, SHARED_MEM_CHUNK_SIZE-1);
-    std::cout << output;
-    sem_close(semptr);
-    munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
-    close(fd);
 
-    return static_cast<int>(0);
+        return static_cast<int>(0);
 }
 
 int main(int argc, char *argv[])
@@ -141,10 +143,14 @@ int main(int argc, char *argv[])
     while (true)
     { // read pipe response
         // sleep(2);
-        terminate_flag = readSharedMemory();
+        int bytes_to_read = 0;
+        read(pipe_fd, &bytes_to_read, sizeof(bytes_to_read));
+        // std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
+        terminate_flag = readSharedMemory(bytes_to_read);
         if (terminate_flag == 1)
         {
-            std::cout << "terminating" << std::endl;
+            // std::cout << "\nterminating" << std::endl;
+            std::cout << std::endl;
             break;
         }
         // int bytes_read = read(pipe_fd, &response_buffer, sizeof(response_buffer));

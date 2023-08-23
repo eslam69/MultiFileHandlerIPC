@@ -289,8 +289,12 @@ int main()
                         }
                         sem_getvalue(semptr, &value);
                         printf("Semaphore value new: %d\n", value);
-                        // sleep(1);
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        sleep(1);
+                        if(write(pipe_fd, &chunk_size, sizeof(chunk_size))== -1)
+                        {
+                            perror("write");
+                        }
+                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
                     }
                     sleep(5);
