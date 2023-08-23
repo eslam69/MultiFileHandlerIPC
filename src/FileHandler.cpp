@@ -21,6 +21,8 @@
 #include <string>
 // #include "smem.h"
 #include <sys/shm.h>
+#include <algorithm>
+#define SHARED_MEM_CHUNK_SIZE 500
 
 const char *PipeName = "file_handler_pipe";
 const char *BackingFile = "/file_handler_shm";
@@ -162,11 +164,11 @@ int main()
                 std::cout << "shared mem segment opened successfully" << std::endl;
             }
 
-            const ssize_t DATA_SIZE = 10000;
-            ftruncate(shm_fd, DATA_SIZE);
+            // const ssize_t DATA_SIZE = 10000;
+            ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE);
 
             caddr_t memptr = static_cast<caddr_t>(mmap(
-                NULL, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+                NULL, SHARED_MEM_CHUNK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
 
             if (memptr == (caddr_t)-1)
             {
@@ -174,7 +176,7 @@ int main()
                 exit(-1);
             }
 
-            fprintf(stderr, "shared mem address: %p [0..%ld]\n", memptr, DATA_SIZE - 1);
+            fprintf(stderr, "shared mem address: %p [0..%ld]\n", memptr, SHARED_MEM_CHUNK_SIZE - 1);
             fprintf(stderr, "backing file:       /dev/shm%s\n", BackingFile);
 
             sem_t *semptr = sem_open(SemaphoreName, O_CREAT, 0644, 12);
@@ -198,7 +200,7 @@ int main()
                     // listFiles(argument);
                     auto data = listFilesToSharedMemory(argument);
 
-                    strncpy(memptr, data.c_str(), DATA_SIZE); // Copy the list to the shared memory
+                    strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
 
                     /* Increment the semaphore so that the reader can read */
                     if (sem_post(semptr) < 0)
@@ -208,7 +210,7 @@ int main()
                     sem_getvalue(semptr, &value);
                     printf("Semaphore value new: %d\n", value);
                     sleep(1);
-                    munmap(memptr, DATA_SIZE);
+                    munmap(memptr, SHARED_MEM_CHUNK_SIZE);
                     close(shm_fd);
                     sem_close(semptr);
                     shm_unlink(BackingFile);
@@ -216,7 +218,7 @@ int main()
                 else if (command == "content")
                 {
                     auto data = readFileContent(argument);
-                    strncpy(memptr, data.c_str(), DATA_SIZE); // Copy the list to the shared memory
+                    strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
 
                     /* Increment the semaphore so that the reader can read */
                     if (sem_post(semptr) < 0)
@@ -226,7 +228,7 @@ int main()
                     sem_getvalue(semptr, &value);
                     printf("Semaphore value new: %d\n", value);
                     sleep(1);
-                    munmap(memptr, DATA_SIZE);
+                    munmap(memptr, SHARED_MEM_CHUNK_SIZE);
                     close(shm_fd);
                     sem_close(semptr);
                     shm_unlink(BackingFile);

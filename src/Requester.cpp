@@ -19,13 +19,14 @@
 #include <string>
 // #include "smem.h"
 #include <sys/shm.h>
-
+#include <algorithm>
+#define SHARED_MEM_CHUNK_SIZE 500
 const char *SemaphoreName = "file_handler_sem";
 const char *BackingFile = "/file_handler_shm";
 
 const char *PipeName = "file_handler_pipe";
 // byte size 5000
-ssize_t ByteSize = 10000;
+// ssize_t DATA_SIZE = 10000;
 void readSharedMemory()
 {
     int fd = shm_open(BackingFile, O_RDWR, 0644);
@@ -40,7 +41,7 @@ void readSharedMemory()
     // }
 
     caddr_t memptr = static_cast<caddr_t>(mmap(
-        NULL, ByteSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+        NULL, SHARED_MEM_CHUNK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
 
     if (memptr == MAP_FAILED)
     {
@@ -65,12 +66,12 @@ void readSharedMemory()
     }
     sem_getvalue(semptr, &value);
     printf("Semaphore value after post: %d\n", value);
-    std::string sharedContent(memptr, ByteSize);
+    std::string sharedContent(memptr, SHARED_MEM_CHUNK_SIZE);
     std::cout << "Content read from shared memory:" << std::endl;
     std::cout << sharedContent << std::endl;
 
     sem_close(semptr);
-    munmap(memptr, ByteSize);
+    munmap(memptr, SHARED_MEM_CHUNK_SIZE);
     close(fd);
 }
 
