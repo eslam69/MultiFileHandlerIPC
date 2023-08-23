@@ -164,7 +164,6 @@ int main()
                 std::cout << "shared mem segment opened successfully" << std::endl;
             }
 
-            // const ssize_t DATA_SIZE = 10000;
             ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE);
 
             caddr_t memptr = static_cast<caddr_t>(mmap(
@@ -189,10 +188,7 @@ int main()
             sem_init(semptr, 1, 0);
             sem_getvalue(semptr, &value);
             printf("Semaphore value: %d\n", value);
-            // std::cout << "waiting" << std::endl;
-            // sleep(1);
-            // std::cout << "DONE" << std::endl;
-            // read arguments and choose the command
+
             if (iss >> command >> argument)
             {
                 if (command == "list")
@@ -218,20 +214,69 @@ int main()
                 else if (command == "content")
                 {
                     auto data = readFileContent(argument);
-                    strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
-
-                    /* Increment the semaphore so that the reader can read */
-                    if (sem_post(semptr) < 0)
+                    int offset = 0;
+                    while (offset < data.size())
                     {
-                        perror("sem_post");
+                        // Create shared memory
+                        int shm_fd = shm_open(BackingFile, O_RDWR | O_CREAT, 0644);
+                        if (shm_fd < 0)
+                        {
+                            perror("Can't open shared mem segment...");
+                            exit(-1);
+                        }
+                        else
+                        {
+                            std::cout << "shared mem segment opened successfully" << std::endl;
+                        }
+
+                        ftruncate(shm_fd, SHARED_MEM_CHUNK_SIZE);
+
+                        caddr_t memptr = static_cast<caddr_t>(mmap(
+                            NULL, SHARED_MEM_CHUNK_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0));
+
+                        if (memptr == (caddr_t)-1)
+                        {
+                            perror("Can't get segment...");
+                            exit(-1);
+                        }
+
+                        fprintf(stderr, "shared mem address: %p [0..%ld]\n", memptr, SHARED_MEM_CHUNK_SIZE - 1);
+                        fprintf(stderr, "backing file:       /dev/shm%s\n", BackingFile);
+
+                        sem_t *semptr = sem_open(SemaphoreName, O_CREAT, 0644, 12);
+                        if (semptr == (void *)-1)
+                        {
+                            perror("sem_open");
+                            exit(-1);
+                        }
+                        int value;
+                        sem_init(semptr, 1, 0);
+                        sem_getvalue(semptr, &value);
+                        printf("Semaphore value: %d\n", value);
+
+                        // Chunking ************************
+                        int chunk_size = std::min(SHARED_MEM_CHUNK_SIZE, (int)(data.size() - offset));
+                        strncpy(memptr + offset, data.c_str() + offset, chunk_size);
+                        offset += chunk_size;
+                        printf("offset+chunk_size: %d\n", offset + chunk_size);
+
+                        // strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
+                        // **********************************
+
+                        /* Increment the semaphore so that the reader can read */
+                        if (sem_post(semptr) < 0)
+                        {
+                            perror("sem_post");
+                        }
+                        sem_getvalue(semptr, &value);
+                        printf("Semaphore value new: %d\n", value);
+                        sleep(1);
+                        munmap(memptr, SHARED_MEM_CHUNK_SIZE);
+                        close(shm_fd);
+                        sem_close(semptr);
+                        shm_unlink(BackingFile);
                     }
-                    sem_getvalue(semptr, &value);
-                    printf("Semaphore value new: %d\n", value);
-                    sleep(1);
-                    munmap(memptr, SHARED_MEM_CHUNK_SIZE);
-                    close(shm_fd);
-                    sem_close(semptr);
-                    shm_unlink(BackingFile);
+                    
                 }
                 else
                 {
