@@ -148,7 +148,7 @@ int main()
             std::cerr << "Failed to open named pipe for reading." << std::endl;
             return 1;
         }
-        sleep(1);
+        // sleep(1);
         if ((bytes_read = read(pipe_fd, request_buffer, sizeof(request_buffer))) > 0)
         {
 
@@ -189,8 +189,8 @@ int main()
             }
             int value;
             sem_init(semptr, 1, 0);
-            sem_getvalue(semptr, &value);
-            printf("Semaphore value: %d\n", value);
+            // sem_getvalue(semptr, &value);
+            // printf("Semaphore value: %d\n", value);
 
             if (iss >> command >> argument)
             {
@@ -260,8 +260,10 @@ int main()
                     {
 
                         // Chunking ************************
-                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size() - offset));
+                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size()+1 - offset));
                         auto chunk = data.substr(offset, chunk_size);
+                        // std::cout << "current chunk" << chunk.c_str() << std::endl;
+
                         if (chunk_size < SHARED_MEM_CHUNK_SIZE + 1)
                         {
                             chunk[chunk_size - 1] = 'X';
@@ -272,15 +274,10 @@ int main()
                             chunk[chunk_size - 1] = '1';
                         }
                         strncpy(memptr, chunk.c_str(), chunk_size);
-                        printf("mem: %c\n", chunk[chunk_size - 1]);
-                        // std::cout << "current chunk" << chunk.c_str() << std::endl;
-                        offset += chunk_size + 1;
-                        // printf("offset+chunk_size: %d\n", offset + chunk_size);
-                        printf("offset = %d\n", offset);
-                        printf("chunk_size = %d\n", chunk_size);
-                        // break;
-                        // strncpy(memptr, data.c_str(), SHARED_MEM_CHUNK_SIZE); // Copy the list to the shared memory
-                        // **********************************
+                        // printf("mem: %c\n", chunk[chunk_size - 1]);
+                        offset += chunk_size ;
+                        // printf("offset = %d\n", offset);
+                        // printf("chunk_size = %d\n", chunk_size);
 
                         /* Increment the semaphore so that the reader can read */
                         if (sem_post(semptr) < 0)
@@ -290,18 +287,20 @@ int main()
                         sem_getvalue(semptr, &value);
                         printf("Semaphore value new: %d\n", value);
                         sleep(1);
-                        if(write(pipe_fd, &chunk_size, sizeof(chunk_size))== -1)
+                        if (write(pipe_fd, &chunk_size, sizeof(chunk_size)) == -1)
                         {
                             perror("write");
                         }
-                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     }
-                    sleep(5);
-                    munmap(memptr,SHARED_MEM_CHUNK_SIZE + 1);
+                    std::cout<<"************End Of Request************"<<std::endl;
+                    sleep(2);
+                    munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
                     close(shm_fd);
                     sem_close(semptr);
                     shm_unlink(BackingFile);
+                    close(pipe_fd);
+                    std::cout<<"************Resources Released************"<<std::endl;
                 }
                 else
                 {
@@ -313,11 +312,8 @@ int main()
                 std::cerr << "Invalid request format: " << request << std::endl;
             }
         }
-        close(pipe_fd);
+        // close(pipe_fd);
     }
-    // sleep(12);
-
-    // close(pipe_fd);
 
     return 0;
 }
