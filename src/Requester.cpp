@@ -80,9 +80,9 @@ int readSharedMemory(int bytes_to_read)
 
     // std::cout << "*****flag>>>>>>>>>>>>" << flag << std::endl;
     auto output = sharedContent.substr(0, bytes_to_read - 1);
-    // std::cout << "output size: " << output.size() << std::endl;
+    std::cout << "output size: " << output.size() << std::endl;
     std::cout << output;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(800));
     sem_close(semptr);
     munmap(memptr, bytes_to_read);
     close(fd);
@@ -90,7 +90,8 @@ int readSharedMemory(int bytes_to_read)
     if (flag == 'X')
     {
         // std::cout << "";
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // std::cout << output;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return 1;
     }
 

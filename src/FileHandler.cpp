@@ -30,7 +30,15 @@ const char *PipeName = "file_handler_pipe";
 const char *BackingFile = "/file_handler_shm";
 const char *SemaphoreName = "file_handler_sem";
 int chunk_size;
+
+struct SharedMemory
+{
+    caddr_t shared_mem_ptr;
+    sem_t *semaphore_ptr;
+    int pipe_fd;
+};
 // Function to list files in a directory
+
 void listFiles(const std::string &directory)
 {
     // Implement your logic to list files in the given directory
@@ -89,7 +97,7 @@ std::string readFileContent(const std::string &filePath)
     }
 }
 
-std::string listFilesToSharedMemory(const std::string &directory)
+void listFilesToSharedMemory(const std::string &directory, SharedMemory &shared_memory)
 {
     std::string command = "ls -p " + directory + " | grep -v /"; // List only files (not directories)
     FILE *ls_output = popen(command.c_str(), "r");
@@ -97,19 +105,62 @@ std::string listFilesToSharedMemory(const std::string &directory)
     if (ls_output)
     {
         std::string files_list;
-        char buffer[128];
+        char buffer[SHARED_MEM_CHUNK_SIZE + 1];
+        int SemValue;
+
+        int strlength;
+        int chunk_size = 0;
+        int offset = 0;
         while (fgets(buffer, sizeof(buffer), ls_output))
         {
-            files_list += buffer;
+
+            // Chunking ************************
+            strlength = strlen(buffer);
+            chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)strlength + 1 - offset));
+            // auto chunk = data.substr(offset, chunk_size);
+            // std::cout << "current chunk" << chunk.c_str() << std::endl;
+
+            if (chunk_size < SHARED_MEM_CHUNK_SIZE + 1)
+            {
+                buffer[chunk_size - 1] = 'X';
+                std::cout << "**************chunk_size < SHARED_MEM_CHUNK_SIZE + 1***************" << std::endl;
+            }
+            else
+            {
+                buffer[chunk_size - 1] = '1';
+            }
+            strncpy(shared_memory.shared_mem_ptr, buffer, chunk_size);
+            // printf("mem: %c\n", chunk[chunk_size - 1]);
+            offset += chunk_size;
+            // printf("offset = %d\n", offset);
+            // printf("chunk_size = %d\n", chunk_size);
+
+            /* Increment the semaphore so that the reader can read */
+            if (sem_post(shared_memory.semaphore_ptr) < 0)
+            {
+                perror("sem_post");
+            }
+            sem_getvalue(shared_memory.semaphore_ptr, &SemValue);
+            printf("Semaphore value new: %d\n", SemValue);
+            sleep(1);
+            if (write(shared_memory.pipe_fd, &chunk_size, sizeof(chunk_size)) == -1)
+            {
+                perror("writing Error when writing to pipe the datachunk size");
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
+        // while (fgets(buffer, sizeof(buffer), ls_output))
+        // {
+        //     files_list += buffer;
+        // }
         pclose(ls_output);
 
-        return files_list;
+        // return files_list;
     }
     else
     {
         std::cerr << "Failed to execute 'ls' command." << std::endl;
-        return std::string("FAILED");
+        // return std::string("FAILED!");
     }
 }
 
@@ -126,7 +177,6 @@ int main()
 
     char request_buffer[512]; // Adjust buffer size as needed
     ssize_t bytes_read;
-    // ssize_t shared_memory_size = 1024;
 
     while (true)
     {
@@ -192,51 +242,18 @@ int main()
             // sem_getvalue(semptr, &value);
             // printf("Semaphore value: %d\n", value);
 
+            SharedMemory shared_memory;
+            shared_memory.shared_mem_ptr = memptr;
+            shared_memory.semaphore_ptr = semptr;
+            shared_memory.pipe_fd = pipe_fd;
+
             if (iss >> command >> argument)
             {
                 if (command == "list")
                 {
 
-                    auto data = listFilesToSharedMemory(argument);
+                    listFilesToSharedMemory(argument, shared_memory);
 
-                    int offset = 0;
-                    while (offset < data.size())
-                    {
-
-                        // Chunking ************************
-                        chunk_size = std::min(SHARED_MEM_CHUNK_SIZE + 1, ((int)data.size() + 1 - offset));
-                        auto chunk = data.substr(offset, chunk_size);
-                        // std::cout << "current chunk" << chunk.c_str() << std::endl;
-
-                        if (chunk_size < SHARED_MEM_CHUNK_SIZE + 1)
-                        {
-                            chunk[chunk_size - 1] = 'X';
-                            std::cout << "**************chunk_size < SHARED_MEM_CHUNK_SIZE + 1***************" << std::endl;
-                        }
-                        else
-                        {
-                            chunk[chunk_size - 1] = '1';
-                        }
-                        strncpy(memptr, chunk.c_str(), chunk_size);
-                        // printf("mem: %c\n", chunk[chunk_size - 1]);
-                        offset += chunk_size;
-                        // printf("offset = %d\n", offset);
-                        // printf("chunk_size = %d\n", chunk_size);
-
-                        /* Increment the semaphore so that the reader can read */
-                        if (sem_post(semptr) < 0)
-                        {
-                            perror("sem_post");
-                        }
-                        sem_getvalue(semptr, &value);
-                        printf("Semaphore value new: %d\n", value);
-                        sleep(1);
-                        if (write(pipe_fd, &chunk_size, sizeof(chunk_size)) == -1)
-                        {
-                            perror("write");
-                        }
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    }
                     std::cout << "************End Of Request************" << std::endl;
                     sleep(1);
                     munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
@@ -246,6 +263,7 @@ int main()
                     close(pipe_fd);
                     std::cout << "************Resources Released************" << std::endl;
                 }
+
                 else if (command == "content")
                 {
                     auto data = readFileContent(argument);
@@ -289,7 +307,7 @@ int main()
                         std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     }
                     std::cout << "************End Of Request************" << std::endl;
-                    sleep(1);
+                    sleep(2);
                     munmap(memptr, SHARED_MEM_CHUNK_SIZE + 1);
                     close(shm_fd);
                     sem_close(semptr);
@@ -309,6 +327,5 @@ int main()
         }
         // close(pipe_fd);
     }
-
-    return 0;
-}
+        return 0;
+    }
