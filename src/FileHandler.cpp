@@ -20,30 +20,31 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <filesystem>
 
 #include <boost/version.hpp>
 
-#include <boost/log/utility/manipulators/to_log.hpp>
-
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/utility/formatting_ostream.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/sources/severity_logger.hpp>
-#include <boost/log/sources/record_ostream.hpp>
-#include <boost/log/sources/record_ostream.hpp>
-#include <boost/log/sinks/text_file_backend.hpp>
-#include <boost/log/sinks/sync_frontend.hpp>
-#include <boost/log/expressions/formatters/date_time.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/common.hpp>
-#include <boost/log/attributes/timer.hpp>
-#include <boost/log/attributes/counter.hpp>
-#include <boost/log/attributes.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/log/attributes.hpp>
+#include <boost/log/attributes/counter.hpp>
+#include <boost/log/attributes/timer.hpp>
+#include <boost/log/common.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/expressions/formatters/date_time.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_file_backend.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/sources/severity_logger.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/utility/formatting_ostream.hpp>
+#include <boost/log/utility/manipulators/to_log.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/filesystem.hpp>
 
+// ******************************** Define Constants ********************************
 namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace sinks = boost::log::sinks;
@@ -59,9 +60,14 @@ static std::atomic<int> log_counter(0);
 const char *PipeName = "file_handler_pipe";
 const char *BackingFile = "/file_handler_shm";
 const char *SemaphoreName = "file_handler_sem";
+
+// ************************************************** global variables ********************************************
 int chunk_size;
 static std::atomic<unsigned int> n_requests{1};
 
+// ************************************************** function definitions ********************************************
+
+// function to return the current time as a string
 inline std::string get_timestamp()
 {
     auto now = std::chrono::system_clock::now();
@@ -74,6 +80,7 @@ inline std::string get_timestamp()
     return timestamp.str() + "." + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000);
 }
 
+// function to return the formatted log message
 inline std::string message(std::string const &s)
 {
     // return "[ " + std::to_string(log_counter++) + " ] " + "[" + get_timestamp() + "] " + s;
@@ -81,24 +88,37 @@ inline std::string message(std::string const &s)
     oss << "[" << std::setfill('0') << std::setw(4) << log_counter++ << "] [" << get_timestamp() << "] " << s;
     return oss.str();
 }
+
 // Function to read and display content of a file
 std::string readFileContent(const std::string &filePath)
 {
     // std::cout << "Reading file " << filePath << ":" << std::endl;
     BOOST_LOG_TRIVIAL(info) << message("Request: Reading content of file: ") << filePath;
     BOOST_LOG_TRIVIAL(info) << message("Trying to excute cat command");
+    if (boost::filesystem::is_directory(filePath))
+    {
+        std::cout << "The path " << filePath << " is a directory" << std::endl;
+        BOOST_LOG_TRIVIAL(error) << message("Argument given is a directory!");
+        return std::string("content: Argument given is a directory not a file!");
+    }
+    if (!boost::filesystem::exists(filePath))
+    {
+        std::cout << "The path " << filePath << " does not exist" << std::endl;
+        BOOST_LOG_TRIVIAL(error) << message("No such file!");
+        return std::string("content: No such file!");
+    }
     std::cout << "Request: Reading content of file: " << filePath << std::endl;
     std::string command = "cat " + filePath;
     FILE *cat_output = popen(command.c_str(), "r");
 
     if (cat_output)
     {
-
         std::string file_content;
         char buffer[512];
+
         while (fgets(buffer, sizeof(buffer), cat_output))
         {
-            // std::cout << buffer;
+
             file_content += buffer;
         }
 
@@ -106,16 +126,25 @@ std::string readFileContent(const std::string &filePath)
         return file_content;
     }
     else
-    {   BOOST_LOG_TRIVIAL(error) << message("Failed to execute 'cat' command.");
+    {
+        BOOST_LOG_TRIVIAL(error) << message("Failed to execute 'cat' command.");
         std::cerr << "Failed to execute 'cat' command." << std::endl;
         return std::string("FAILED");
     }
 }
-
+// function to list files in a directory
 std::string listFileInDirectory(const std::string &directory)
 {
-    BOOST_LOG_TRIVIAL(info) << message("Request: Listing files in directory: ") << directory;
+    BOOST_LOG_TRIVIAL(info) << message("Request: Listing files in directory ") << directory;
     BOOST_LOG_TRIVIAL(info) << message("Trying to excute ls -p command");
+    if (!boost::filesystem::is_directory(directory))
+    {
+        std::cout << "The path " << directory << " is a not a valid directory!" << std::endl;
+        BOOST_LOG_TRIVIAL(error) << message("Argument given is a not a valid directory!");
+        return std::string("list: Argument given is a not a valid directory!");
+    }
+
+    std::cout << "Request: Listing files in directory: " << directory << std::endl;
     std::string command = "ls -p " + directory + " | grep -v /"; // List only files (not directories)
     FILE *ls_output = popen(command.c_str(), "r");
     if (ls_output)
@@ -138,26 +167,8 @@ std::string listFileInDirectory(const std::string &directory)
     }
 }
 
+// function to initialize boost logging
 void init_logging()
-{
-    // Create a file sink
-    // allow multiple processes to write to the same file
-    typedef sinks::text_file_backend file_backend_t;
-    boost::shared_ptr<file_backend_t> file_backend = boost::make_shared<file_backend_t>(
-        boost::log::keywords::file_name = "mylog_%N.log",
-        boost::log::keywords::open_mode = (std::ios::out | std::ios::app),
-
-        boost::log::keywords::rotation_size = 10 * 1024 * 1024, // 10 MB
-        boost::log::keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0),
-        boost::log::keywords::auto_flush = true);
-    boost::shared_ptr<logging::core> core = logging::core::get();
-    core->add_sink(boost::make_shared<sinks::synchronous_sink<file_backend_t>>(file_backend));
-
-    // Set the logging filter to log all messages
-    core->set_filter(expr::attr<boost::log::trivial::severity_level>("Severity") >= boost::log::trivial::trace);
-}
-
-void init_logging2()
 {
     // Create a file sink
     typedef sinks::text_file_backend file_backend_t;
@@ -194,11 +205,7 @@ void init_logging2()
 
 int main()
 {
-    // Loggger_init();
-    init_logging2();
-    // boost::log::register_simple_formatter_factory< boost::log::trivial::severity_level, char >("Severity");
-
-    // init();
+    init_logging();
 
     BOOST_LOG_TRIVIAL(info) << message("FileHandler program Started");
 
@@ -231,7 +238,7 @@ int main()
         if ((bytes_read = read(pipe_fd, request_buffer, sizeof(request_buffer))) > 0)
         {
             std::cout << "************New Request************" << std::endl;
-            BOOST_LOG_TRIVIAL(info) << message("************ Received request Number ") << std::to_string(n_requests++) << "  : " << request_buffer<< " ************";
+            BOOST_LOG_TRIVIAL(info) << message("************ Received request Number ") << std::to_string(n_requests++) << "  : " << request_buffer << " ************";
             std::string request(request_buffer, bytes_read);
             std::istringstream iss(request);
             std::string command, argument;
@@ -284,7 +291,7 @@ int main()
             int value;
             sem_init(semptr, 1, 0);
             sem_getvalue(semptr, &value);
-            printf("Semaphore value: %d\n", value);
+            // printf("Semaphore value: %d\n", value);
             BOOST_LOG_TRIVIAL(info) << message("Semaphore value at initialization: ") << value;
             std::string data;
             if (iss >> command >> argument)
@@ -298,7 +305,8 @@ int main()
                     data = readFileContent(argument);
                 }
                 else
-                {   BOOST_LOG_TRIVIAL(error) << message("Unknown command: ") << command;
+                {
+                    BOOST_LOG_TRIVIAL(error) << message("Unknown command: ") << command;
                     std::cerr << "Unknown command: " << command << std::endl;
                 }
             }
@@ -325,12 +333,12 @@ int main()
                     std::cout << "************** Sending Last Chunk ***************" << std::endl;
                 }
                 else
-                {   BOOST_LOG_TRIVIAL(trace) << message("Sending Data Chunk ")<< std::to_string(chunks++)<< " .....";
+                {
+                    BOOST_LOG_TRIVIAL(trace) << message("Sending Data Chunk ") << std::to_string(chunks++) << " .....";
                     chunk[chunk_size - 1] = '1';
                 }
                 strncpy(memptr, chunk.c_str(), chunk_size);
                 offset += chunk_size;
-               
 
                 /* Increment the semaphore so that the reader can read */
                 if (sem_post(semptr) < 0)
@@ -366,7 +374,8 @@ int main()
             BOOST_LOG_TRIVIAL(info) << message("Waiting for new request...");
 
             // close(pipe_fd);
-            std::cout << "************Resources Released************" << std::endl;
+            std::cout << "************Resources Released************" << std::endl
+                      << std::endl;
         }
     }
     close(pipe_fd);

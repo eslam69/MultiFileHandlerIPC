@@ -1,18 +1,18 @@
- [info] [0000] [2023-08-27 10:19:00.747] FileHandler program Started
- [info] [0001] [2023-08-27 10:19:50.749] ************ Received request Number 1  : list /home/eslam ************
- [info] [0002] [2023-08-27 10:19:50.749] Trying to open Shared memory backing file : /file_handler_shm
- [info] [0003] [2023-08-27 10:19:50.749] Shared mem segment opened successfully
- [info] [0004] [2023-08-27 10:19:50.750] Shared mem segment acquired successfully
- [trace] [0005] [2023-08-27 10:19:50.750] Shared mem address: 7f309e22c000
- [info] [0006] [2023-08-27 10:19:50.750] Trying to open Semaphore : file_handler_sem
- [info] [0007] [2023-08-27 10:19:50.750] Semaphore value at initialization: 0
- [info] [0008] [2023-08-27 10:19:50.750] Request: Listing files in directory: /home/eslam
- [info] [0009] [2023-08-27 10:19:50.750] Trying to excute ls -p command
- [info] [0010] [2023-08-27 10:19:50.757] Command Excuted successfully!
- [info] [0011] [2023-08-27 10:19:50.757] Sending Last Data Chunk
- [trace] [0012] [2023-08-27 10:19:50.757] Semaphore value after posting the data: 1
- [trace] [0013] [2023-08-27 10:19:51.257] Written the number of bytes to the pipe successfully
- [info] [0014] [2023-08-27 10:19:51.758] All data sent successfully!
- [info] [0015] [2023-08-27 10:19:51.758] Releasing resources...
- [info] [0016] [2023-08-27 10:19:51.758] ************ Resources Released! ************
- [info] [0017] [2023-08-27 10:19:51.758] Waiting for new request...
+ [info] [0000] [2023-08-27 12:09:15.595] FileHandler program Started
+ [info] [0001] [2023-08-27 12:09:17.773] ************ Received request Number 1  : list . ************
+ [info] [0002] [2023-08-27 12:09:17.773] Trying to open Shared memory backing file : /file_handler_shm
+ [info] [0003] [2023-08-27 12:09:17.773] Shared mem segment opened successfully
+ [info] [0004] [2023-08-27 12:09:17.773] Shared mem segment acquired successfully
+ [trace] [0005] [2023-08-27 12:09:17.773] Shared mem address: 7fa442372000
+ [info] [0006] [2023-08-27 12:09:17.773] Trying to open Semaphore : file_handler_sem
+ [info] [0007] [2023-08-27 12:09:17.773] Semaphore value at initialization: 0
+ [info] [0008] [2023-08-27 12:09:17.773] Request: Listing files in directory .
+ [info] [0009] [2023-08-27 12:09:17.774] Trying to excute ls -p command
+ [info] [0010] [2023-08-27 12:09:17.780] Command Excuted successfully!
+ [info] [0011] [2023-08-27 12:09:17.780] Sending Last Data Chunk
+ [trace] [0012] [2023-08-27 12:09:17.780] Semaphore value after posting the data: 1
+ [trace] [0013] [2023-08-27 12:09:18.281] Written the number of bytes to the pipe successfully
+ [info] [0014] [2023-08-27 12:09:18.781] All data sent successfully!
+ [info] [0015] [2023-08-27 12:09:18.781] Releasing resources...
+ [info] [0016] [2023-08-27 12:09:18.781] ************ Resources Released! ************
+ [info] [0017] [2023-08-27 12:09:18.781] Waiting for new request...

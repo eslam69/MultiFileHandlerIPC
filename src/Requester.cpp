@@ -1,35 +1,33 @@
 // g++ -o requester Requester.cpp -lrt -lpthread
 
-#include <iostream>
-#include <cstring>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <iostream>
+#include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <iostream>
 #include <semaphore.h>
 #include <string>
-// #include "smem.h"
+#include <sys/mman.h>
 #include <sys/shm.h>
-#include <algorithm>
+#include <sys/stat.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <thread>
-#include <chrono>
+//*********************************************** Define Constants ***********************************************
 #define SHARED_MEM_CHUNK_SIZE 4095
+
 const char *SemaphoreName = "file_handler_sem";
 const char *BackingFile = "/file_handler_shm";
-
 const char *PipeName = "file_handler_pipe";
-// byte size 5000
-// ssize_t DATA_SIZE = 10000;
+
+// ************************************************** global variables ********************************************
 int pipe_fd;
+
+
+// ************************************************** function definitions ********************************************
 int readSharedMemory(int bytes_to_read)
 {
     // std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
@@ -94,7 +92,7 @@ int readSharedMemory(int bytes_to_read)
         return 1;
     }
 
-        return static_cast<int>(0);
+    return static_cast<int>(0);
 }
 
 int main(int argc, char *argv[])
@@ -111,17 +109,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Create or open the named pipe
-    // auto pipeFlag = mkfifo(PipeName, 0666);
-    //  if (pipeFlag == -1)
-    // {
-    //     if (errno != EEXIST)
-    //     {
-    //         std::cout << "Failed to open named pipe." << std::endl;
-    //         return 1;
-    //     }
-    // }
-
     pipe_fd = open(PipeName, O_RDWR);
     // validate pipe_fd
     if (pipe_fd == -1)
@@ -136,7 +123,7 @@ int main(int argc, char *argv[])
     std::string request = operation + " " + path;
     write(pipe_fd, request.c_str(), request.size());
     // write(pipe_fd, "\n", 1);
-    std::cout << "Request Sent!" << std::endl;
+    std::cout << ">>>>>>>>>>>>>  Request Sent! <<<<<<<<<<<<<<<< Response :" << std::endl;
     // sleep(2);
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
     int response_buffer;
@@ -146,8 +133,7 @@ int main(int argc, char *argv[])
         // sleep(2);
         int bytes_to_read = 0;
         read(pipe_fd, &bytes_to_read, sizeof(bytes_to_read));
-        std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
-        std::cout << "Receiving data..." << std::endl;
+        // std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
         terminate_flag = readSharedMemory(bytes_to_read);
         if (terminate_flag == 1)
         {
@@ -155,25 +141,6 @@ int main(int argc, char *argv[])
             std::cout << std::endl;
             break;
         }
-        // int bytes_read = read(pipe_fd, &response_buffer, sizeof(response_buffer));
-        // // printf("response_buffer: %d\n", response_buffer);
-        // if (bytes_read == 0)
-        // {
-        //     std::cout << "No response from file handler." << std::endl;
-        //     break;
-        // }
-        // else if (bytes_read == -1)
-        // {
-        //     std::cerr << "Failed to read from pipe." << std::endl;
-        //     break;
-        // }
-        // else
-        // {
-        //     // std::cout << "Response from file handler:" << std::endl;
-        //     // std::cout << response_buffer << std::endl;
-        //     readSharedMemory();
-        //     // break;
-        // }
     }
 
     close(pipe_fd);
