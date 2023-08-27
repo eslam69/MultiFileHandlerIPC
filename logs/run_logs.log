@@ -1,0 +1,20 @@
+ [trace] A trace severity message
+ [debug] A debug severity message
+ [info] Program Started
+ [warning] A warning severity message
+ [error] An error severity message
+ [fatal] A fatal severity message
+ [info] Received request: content FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list .t FileHandler.cpp
+ [info] Received request: list /home/eslamler.cpp
+ [info] Received request: list /home/eslam/catkin_ws/
+ [info] Received request: list /home/eslam/catkin_ws/
+ [info] Received request: content /home/eslam/.bashrc

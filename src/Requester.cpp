@@ -82,7 +82,7 @@ int readSharedMemory(int bytes_to_read)
     auto output = sharedContent.substr(0, bytes_to_read - 1);
     // std::cout << "output size: " << output.size() << std::endl;
     std::cout << output;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     sem_close(semptr);
     munmap(memptr, bytes_to_read);
     close(fd);
@@ -90,7 +90,7 @@ int readSharedMemory(int bytes_to_read)
     if (flag == 'X')
     {
         // std::cout << "";
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return 1;
     }
 
@@ -135,10 +135,10 @@ int main(int argc, char *argv[])
     std::string path = argv[2];
     std::string request = operation + " " + path;
     write(pipe_fd, request.c_str(), request.size());
-    write(pipe_fd, "\n", 1);
+    // write(pipe_fd, "\n", 1);
     std::cout << "Request Sent!" << std::endl;
     // sleep(2);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(900));
     int response_buffer;
     int terminate_flag = 0;
     while (true)
@@ -146,7 +146,8 @@ int main(int argc, char *argv[])
         // sleep(2);
         int bytes_to_read = 0;
         read(pipe_fd, &bytes_to_read, sizeof(bytes_to_read));
-        // std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
+        std::cout << "bytes_to_read: " << bytes_to_read << std::endl;
+        std::cout << "Receiving data..." << std::endl;
         terminate_flag = readSharedMemory(bytes_to_read);
         if (terminate_flag == 1)
         {
