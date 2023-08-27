@@ -70,7 +70,7 @@ int readSharedMemory(int bytes_to_read)
         perror("sem_wait");
         exit(-1);
     }
-    sem_getvalue(semptr, &value);
+    // sem_getvalue(semptr, &value);
     // printf("Semaphore value after post: %d\n", value);
     std::string sharedContent(memptr, bytes_to_read);
     // std::string sharedContent(memptr);

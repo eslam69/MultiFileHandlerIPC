@@ -1,20 +1,44 @@
- [trace] A trace severity message
- [debug] A debug severity message
- [info] Program Started
- [warning] A warning severity message
- [error] An error severity message
- [fatal] A fatal severity message
- [info] Received request: content FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list .t FileHandler.cpp
- [info] Received request: list /home/eslamler.cpp
- [info] Received request: list /home/eslam/catkin_ws/
- [info] Received request: list /home/eslam/catkin_ws/
- [info] Received request: content /home/eslam/.bashrc
+ [info] [0000] [2023-08-27 09:51:32.765] FileHandler program Started
+ [info] [0001] [2023-08-27 09:51:36.303] ************ Received request Number 1  : content FileHandler.cpp ************
+ [info] [0002] [2023-08-27 09:51:36.304] Trying to open Shared memory backing file : /file_handler_shm
+ [info] [0003] [2023-08-27 09:51:36.304] Shared mem segment opened successfully
+ [info] [0004] [2023-08-27 09:51:36.304] Shared mem segment acquired successfully
+ [trace] [0005] [2023-08-27 09:51:36.304] Shared mem address: 7f14a8de2000
+ [info] [0006] [2023-08-27 09:51:36.304] Trying to open Semaphore : file_handler_sem
+ [info] [0007] [2023-08-27 09:51:36.304] Semaphore value at initialization: 0
+ [info] [0008] [2023-08-27 09:51:36.304] Request: Reading content of file: FileHandler.cpp
+ [info] [0009] [2023-08-27 09:51:36.304] Trying to excute cat command
+ [info] [0010] [2023-08-27 09:51:36.309] Command Excuted successfully!
+ [trace] [0011] [2023-08-27 09:51:36.310] Sending Data Chunk 1 .....
+ [trace] [0012] [2023-08-27 09:51:36.310] Semaphore value after posting the data: 1
+ [trace] [0013] [2023-08-27 09:51:36.810] Written the number of bytes to the pipe successfully
+ [trace] [0014] [2023-08-27 09:51:37.310] Sending Data Chunk 2 .....
+ [trace] [0015] [2023-08-27 09:51:37.310] Semaphore value after posting the data: 1
+ [trace] [0016] [2023-08-27 09:51:37.811] Written the number of bytes to the pipe successfully
+ [trace] [0017] [2023-08-27 09:51:38.311] Sending Data Chunk 3 .....
+ [trace] [0018] [2023-08-27 09:51:38.311] Semaphore value after posting the data: 1
+ [trace] [0019] [2023-08-27 09:51:38.811] Written the number of bytes to the pipe successfully
+ [info] [0020] [2023-08-27 09:51:39.312] Sending Last Data Chunk
+ [trace] [0021] [2023-08-27 09:51:39.312] Semaphore value after posting the data: 1
+ [trace] [0022] [2023-08-27 09:51:39.812] Written the number of bytes to the pipe successfully
+ [info] [0023] [2023-08-27 09:51:40.313] All data sent successfully!
+ [info] [0024] [2023-08-27 09:51:40.313] Releasing resources...
+ [info] [0025] [2023-08-27 09:51:40.313] ************ Resources Released! ************
+ [info] [0026] [2023-08-27 09:51:40.313] Waiting for new request...
+ [info] [0027] [2023-08-27 09:52:18.603] ************ Received request Number 2  : list .t FileHandler.cpp ************
+ [info] [0028] [2023-08-27 09:52:18.603] Trying to open Shared memory backing file : /file_handler_shm
+ [info] [0029] [2023-08-27 09:52:18.603] Shared mem segment opened successfully
+ [info] [0030] [2023-08-27 09:52:18.603] Shared mem segment acquired successfully
+ [trace] [0031] [2023-08-27 09:52:18.603] Shared mem address: 7f14a8de2000
+ [info] [0032] [2023-08-27 09:52:18.604] Trying to open Semaphore : file_handler_sem
+ [info] [0033] [2023-08-27 09:52:18.604] Semaphore value at initialization: 0
+ [info] [0034] [2023-08-27 09:52:18.604] Request: Listing files in directory: .
+ [info] [0035] [2023-08-27 09:52:18.604] Trying to excute ls -p command
+ [info] [0036] [2023-08-27 09:52:18.611] Command Excuted successfully!
+ [info] [0037] [2023-08-27 09:52:18.611] Sending Last Data Chunk
+ [trace] [0038] [2023-08-27 09:52:18.611] Semaphore value after posting the data: 1
+ [trace] [0039] [2023-08-27 09:52:19.111] Written the number of bytes to the pipe successfully
+ [info] [0040] [2023-08-27 09:52:19.612] All data sent successfully!
+ [info] [0041] [2023-08-27 09:52:19.612] Releasing resources...
+ [info] [0042] [2023-08-27 09:52:19.612] ************ Resources Released! ************
+ [info] [0043] [2023-08-27 09:52:19.612] Waiting for new request...
